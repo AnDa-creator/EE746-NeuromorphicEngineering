@@ -19,7 +19,7 @@ for i = 1:N
     
     % normData is your data after normalisation
     order=23;
-    passband=0.5;
+    passband=0.2;
     threshold=0.89;
     
     % Creation of a passband filter 
@@ -36,31 +36,34 @@ end
 
 writematrix(encodedDataArray,'PreProcessedData.csv')
 
+figure
+plot(normData);
+title('Scaled data');
+
+figure
+%stem(encodedData)
+stem(encodedData,'r')
+title('Spike trains');
+
 %% Reconstruction of last channel/ sample in the loop above
 
 % % Signal reconstruction by convolution of the data and the filter. The
 % % decodedData length dl = el+fl-1 where el is the encodedData length and fl
 % % the filter length.
-% decodedData=conv(encodedData,filter);
-% decodedData=decodedData(filterSize+1:end-((2*filterSize)-1),:);
-% mse=mean((normData(:,:) - decodedData(:,:)).^2); % mean square error
-% disp(mse);
-% 
-% figure
-% plot(normData);
-% title('Scaled data');
-% 
-% figure
-% %stem(encodedData)
-% stem(encodedData,'r')
-% title('Spike trains');
-% 
-% figure
-% hold on
-% plot(normData,'b');
-% plot(decodedData,'r')
-% title('Reconstructed data');
-% hold off 
+
+decodedData=conv(encodedData,filter);
+decodedData=decodedData(filterSize+1:end-((2*filterSize)-1),:);
+mse=mean((normData(:,:) - decodedData(:,:)).^2); % mean square error
+disp(mse);
+
+
+
+figure
+hold on
+plot(normData,'b');
+plot(decodedData,'r')
+title('Reconstructed data');
+hold off 
 
 %% Test on sine wave
 
