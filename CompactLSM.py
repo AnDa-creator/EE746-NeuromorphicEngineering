@@ -48,6 +48,10 @@ def syn_res(syn_string,type_syn,t,time,i,j,w_ij,del_i,h,M):
     syn_curr = np.zeros((M),dtype=np.float64)
     # ts_ds = np.float64(time[t]) + del_i
     ind = np.int64(del_i/h) + t
+    if ind > len(time) - 1:
+#         print(ind)
+        return syn_curr
+    
     ts_ds = np.float64(time[ind]) 
     
     if syn_string == "static":
@@ -88,9 +92,9 @@ def reservoir_solver(N, Delay, synapes, M, h, I_app, params_potential, Weights, 
 
     for t in range(1,M):
         I_total = I_app + I_syn
-
+#         print("current" , I_total[:,t-1])
         V_neuron, Spike = LIF(V_neurons[:,t-1],I_total[:,t-1],I_total[:,t],N,h,t,index_prev_spike, params_potential)  # solve for neuron potential and check if spike is produced
-
+#         print("Potential", V_neuron)
         V_neurons[:,t] = V_neuron
         Spikes[:,t] = Spike
 
@@ -131,7 +135,6 @@ def Weight_learner(last_conc, weight_prev,
     Wmin = -8 if type_syn==1 else -8*(1 - 2**(nbit - 1))
     del_w = 0.0002 * 2**(nbit - 4)
     
-    print(weight_prev)
     
     if (C_theta < last_conc < C_theta + del_c) and (weight_prev < Wmax):
         Wnew = weight_prev + del_w if binomial(1, p_plus) == 1 else weight_prev
@@ -146,7 +149,7 @@ def Weight_learner(last_conc, weight_prev,
 def teacher_current(neuron_ids, desired_neuron_ids, N_read, Calcium_conc, params_conc):
     C_theta, del_c, tau_c, nbits, delta_c = params_conc.values()
     I_teach = np.zeros((N_read,))
-    I_infi = 10000
+    I_infi = 1000
     for a_neuron_id in neuron_ids:
         if a_neuron_id in desired_neuron_ids:
             I_teach[a_neuron_id] = I_infi * np.heaviside(C_theta +  delta_c - Calcium_conc[a_neuron_id], 0)
@@ -156,7 +159,7 @@ def teacher_current(neuron_ids, desired_neuron_ids, N_read, Calcium_conc, params
     return I_teach
 
 def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res, 
-                     params_potential, params_conc, Weights_readOut_in,syn_string,training=False):
+                     params_potential, params_conc, Weights_readOut_in,syn_string,training=False, train_ids=None):
                      
     C_theta, del_c, tau_c, nbit, delta_c = params_conc.values()
     C, g_L, vrest, V_T, R_p = params_potential.values()
@@ -191,7 +194,7 @@ def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res,
         
         if training:
             neuron_ids = [i for i in range(N_read)]
-            desired_neuron_ids = [0]
+            desired_neuron_ids = train_ids
             I_teach = teacher_current(neuron_ids, desired_neuron_ids,N_read, Calcium_conc[:,t], params_conc)
         
         for i in range(N_read):
@@ -215,5 +218,6 @@ def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res,
 
 def classifier(Spikes_readout,synapes_read):
     No_of_spikes = np.sum(Spikes_readout,1)
+    print(No_of_spikes)
     class_out = np.argmax(No_of_spikes)
-    return synapes_read[class_out]
+    return synapes_read[class_out], class_out
