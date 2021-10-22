@@ -6,6 +6,7 @@ from math import exp
 from numpy.random import binomial
 from random import shuffle
 from random import seed
+import matplotlib.pyplot as plt
 
 ##########################
 def ID_to_ind(nx,ny,nz,ID):
@@ -117,9 +118,12 @@ def reservoir_solver(N, Delay, synapes, M, h, I_app, params_potential, Weights, 
     return V_neurons, Spikes
 
 
+########################
 def conc_update(prev_conc, Spike, tau_c, h):
     return prev_conc*(1 - h/tau_c) + Spike
 
+
+#########################
 def Weight_learner(last_conc, weight_prev,
                    C_theta=5,  del_c=3, nbit=3, type_syn = None):
     """
@@ -146,6 +150,8 @@ def Weight_learner(last_conc, weight_prev,
         
     return Wnew
 
+
+#######################################
 def teacher_current(neuron_ids, desired_neuron_ids, N_read, Calcium_conc, params_conc):
     C_theta, del_c, tau_c, nbits, delta_c = params_conc.values()
     I_teach = np.zeros((N_read,))
@@ -158,6 +164,8 @@ def teacher_current(neuron_ids, desired_neuron_ids, N_read, Calcium_conc, params
     
     return I_teach
 
+
+######################################
 def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res, 
                      params_potential, params_conc, Weights_readOut_in,syn_string,training=False, train_ids=None):
                      
@@ -216,8 +224,28 @@ def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res,
 
     return V_neurons, Spikes, Weights_readOut
 
+
+##############################
 def classifier(Spikes_readout,synapes_read):
     No_of_spikes = np.sum(Spikes_readout,1)
     print(No_of_spikes)
     class_out = np.argmax(No_of_spikes)
     return synapes_read[class_out], class_out
+
+####################
+def plot_spikes(Spike_train,N,M):
+    plt.plot(0, 0)
+
+    for i in range(N):
+        for j in range(M):
+            if(Spike_train[i,j] == 1):
+                x1 = [i-0.25 , i+0.25]
+                x2 = [j,j]
+                plt.plot(x2,x1,color = 'black')
+
+    plt.xlim([0, M])
+    plt.ylim([0, N])
+    plt.title("Spikes")  
+    plt.xlabel("Time index")
+    plt.ylabel("Neuron ID")
+    plt.show()
