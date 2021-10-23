@@ -6,6 +6,7 @@ from math import exp
 from numpy.random import binomial
 from random import shuffle
 from random import seed
+import pandas as pd
 import matplotlib.pyplot as plt
 
 ##########################
@@ -232,6 +233,7 @@ def classifier(Spikes_readout,synapes_read):
     class_out = np.argmax(No_of_spikes)
     return synapes_read[class_out], class_out
 
+
 ####################
 def plot_spikes(Spike_train,N,M):
     plt.plot(0, 0)
@@ -249,3 +251,77 @@ def plot_spikes(Spike_train,N,M):
     plt.xlabel("Time index")
     plt.ylabel("Neuron ID")
     plt.show()
+
+
+##############################
+def class_of_sample(label):
+    if label == '00':
+        return 0
+    elif label == '01':
+        return 1
+    elif label == '02':
+        return 2
+    elif label == '03':
+        return 3
+    elif label == '04':
+        return 4
+    elif label == '05':
+        return 5
+    elif label == '06':
+        return 6
+    elif label == '07':
+        return 7
+    elif label == '08':
+        return 8
+    elif label == '09':
+        return 9
+
+
+###########################3
+def Input_current_gen(file_name_List, syn_string, N, time_params, training=False, train_Labels=None, seedvalue=4):
+    input_num = 0
+    h, Delay = time_params.values()
+    for idx in range(len(file_name_List)):
+        data = pd.read_csv(file_name_List[idx], sep=",", header=None)
+        data_as_numpy = data.to_numpy()
+        input = data_as_numpy.transpose()   # Single Sample input
+        (L,M) = input.shape
+
+        ## Connection from input neurons to reservoir
+        W_in_res = np.zeros((L,N)) # (i,j) entry is the weight of synapse from ith input to jth neuron in reservoir 
+        W_in = 8
+        Fin = 4 # no. of neurons a single input neuron is connected to
+
+        connection_in_res = np.zeros((L,Fin),dtype=np.int64) # stores the id of reservoir neurons
+
+        reservoir_ID = [i for i in range(N)]
+        seed(seedvalue)
+        for i in range(L):
+            shuffle(reservoir_ID)
+            for j in range(Fin):
+                sign_W_in = (binomial(1,1/2) - 0.5)*2
+                W_in_res[i,reservoir_ID[j]] = sign_W_in*W_in
+                connection_in_res[i,j] = reservoir_ID[j]
+
+
+        ## Current input to the reservoir from the input neurons
+        In_neurons = input   # spike train of L input neurons, over M timesteps, 1 if spike, 0 if no spike
+        # print(In_neurons)
+        In_app = np.zeros((N,M),dtype=np.float64)    # input current to the reservoir.
+
+        time = np.array([j*h for j in range(M)],dtype=np.float64)
+
+        for t in range(M):
+            for i in range(L):
+                if int(In_neurons[i,t]) == 1:
+                    for j in range(Fin):
+                        n_ID = connection_in_res[i,j]
+                        w_ij = W_in_res[i,n_ID]
+                        updates = syn_res(syn_string,1,t,time,i,n_ID,w_ij,Delay,h,M)
+                        indices = [[n_ID,k] for k in range(M)]
+
+                        In_app[n_ID,:] += updates
+                        
+        train_Label = class_of_sample(train_Labels[idx]) if training else "Null"
+        input_num += 1
+        yield In_app, L, M, train_Label, input_num
