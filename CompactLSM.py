@@ -138,7 +138,7 @@ def Weight_learner(last_conc, weight_prev,
     
     Wmax = 8 if type_syn==0 else 8*(1 - 2**(nbit - 1))
     Wmin = -8 if type_syn==1 else -8*(1 - 2**(nbit - 1))
-    del_w = 0.0002 * 2**(nbit - 4)
+    del_w = 0.01
     
     
     if (C_theta < last_conc < C_theta + del_c) and (weight_prev < Wmax):
@@ -156,7 +156,7 @@ def Weight_learner(last_conc, weight_prev,
 def teacher_current(neuron_ids, desired_neuron_ids, N_read, Calcium_conc, params_conc):
     C_theta, del_c, tau_c, nbits, delta_c = params_conc.values()
     I_teach = np.zeros((N_read,))
-    I_infi = 1000
+    I_infi = 10000
     for a_neuron_id in neuron_ids:
         if a_neuron_id in desired_neuron_ids:
             I_teach[a_neuron_id] = I_infi * np.heaviside(C_theta +  delta_c - Calcium_conc[a_neuron_id], 0)
@@ -217,9 +217,9 @@ def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res,
                 for j in range(N_read):
                     updates = syn_res(syn_string,neuron_tp,t,time,i,j,np.float64(Weights_readOut[j,i]),Delay,h,M)
                     I_syn_additional[j,:] = updates
-
-                    W_new = Weight_learner(Calcium_conc[j,t-1], Weights_readOut[j,i], C_theta,  del_c, nbit, neuron_tp)
-                    Weights_readOut[j,i] = W_new
+                    if training:
+                        W_new = Weight_learner(Calcium_conc[j,t-1], Weights_readOut[j,i], C_theta,  del_c, nbit, neuron_tp)
+                        Weights_readOut[j,i] = W_new
 
                 I_syn = I_syn + I_syn_additional
 
@@ -229,7 +229,7 @@ def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res,
 ##############################
 def classifier(Spikes_readout,synapes_read):
     No_of_spikes = np.sum(Spikes_readout,1)
-    print(No_of_spikes)
+#     print(No_of_spikes)
     class_out = np.argmax(No_of_spikes)
     return synapes_read[class_out], class_out
 
