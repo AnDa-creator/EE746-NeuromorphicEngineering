@@ -131,7 +131,7 @@ def Weight_learner(last_conc, weight_prev,
         Set type_syn as 1 for E --> E/I and 0 for I --> E/I, basically fanout from I or E.
     """
     
-    p_plus = 0.1; p_minus = 0.1;
+    p_plus = 1; p_minus = 1;
     
     
     # if type_syn not in (1, 0): raise ValueError("Invalid type")
@@ -236,8 +236,8 @@ def classifier(Spikes_readout,synapes_read):
 
 ####################
 def plot_spikes(Spike_train,N,M):
+    # plt.figure(figsize=(6,6))
     plt.plot(0, 0)
-
     for i in range(N):
         for j in range(M):
             if(Spike_train[i,j] == 1):
@@ -250,6 +250,7 @@ def plot_spikes(Spike_train,N,M):
     plt.title("Spikes")  
     plt.xlabel("Time index")
     plt.ylabel("Neuron ID")
+    
     plt.show()
 
 
@@ -296,6 +297,7 @@ def Input_current_gen(file_name_List, syn_string, N, time_params, training=False
 
         reservoir_ID = [i for i in range(N)]
         seed(seedvalue)
+        np.random.seed(seedvalue)
         for i in range(L):
             shuffle(reservoir_ID)
             for j in range(Fin):
