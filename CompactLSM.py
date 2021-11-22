@@ -4,8 +4,8 @@ from numpy.core.overrides import verify_matching_signatures
 import numpy as np
 from math import exp
 from numpy.random import binomial
-from random import shuffle
-from random import seed
+# from random import shuffle
+# from random import seed
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -42,6 +42,23 @@ def LIF(V_neuron_prev,I_input_prev,I_input_next,N,h,index_next,index_prev_spike,
     
     return V_neuron_next, Spike_next
 
+# def LIF(V_neuron_prev,I_input_prev,I_input_next,N,h,index_next,index_prev_spike, params):
+#     C, g_L, E_L, V_T, R_p = params.values()
+#     R_p_ind = np.math.ceil(R_p/h)
+    
+#     V_neuron_next = E_L*np.ones((N,), dtype=np.float64)
+#     Spike_next = np.zeros((N,), dtype=np.int64)
+#     V_temp = V_neuron_prev - V_neuron_prev*g_L + I_input_next + I_input_prev
+#     for i in range(N):
+#             if index_next-index_prev_spike[i] < R_p_ind:
+#                 V_neuron_next[i] = E_L
+#             elif V_temp[i] < V_T:
+#                 V_neuron_next[i] = V_temp[i] 
+#             else:
+#                 Spike_next[i]  = np.int64(1)
+#                 V_neuron_next[i] = V_temp[i]
+    
+#     return V_neuron_next, Spike_next    
 
 ##########################
 def syn_res(syn_string,type_syn,t,time,i,j,w_ij,del_i,h,M):  
@@ -114,32 +131,37 @@ def reservoir_solver(N, Delay, synapes, M, h, I_app, params_potential, Weights, 
                     I_syn_additional[neurons[j],:] = updates
       
         I_syn = I_syn + I_syn_additional
-
     
     return V_neurons, Spikes
 
 
 ########################
 def conc_update(prev_conc, Spike, tau_c, h):
-    return prev_conc*(1 - h/tau_c) + Spike
+#     print("\n", prev_conc)
+    return prev_conc*(1 - h/tau_c) + Spike * h
 
 
 #########################
 def Weight_learner(last_conc, weight_prev,
-                   C_theta=5,  del_c=3, nbit=3, type_syn = None):
+                   C_theta=10,  del_c=2, nbit=3, type_syn = None):
     """
         Set type_syn as 1 for E --> E/I and 0 for I --> E/I, basically fanout from I or E.
     """
     
-    p_plus = 1; p_minus = 1;
+    p_plus = 0.1; p_minus = 0.1;
     
     
     # if type_syn not in (1, 0): raise ValueError("Invalid type")
     
-    Wmax = 8 if type_syn==0 else 8*(1 - 2**(nbit - 1))
-    Wmin = -8 if type_syn==1 else -8*(1 - 2**(nbit - 1))
-    del_w = 0.01
-    
+    # Wmax = 8 if type_syn==0 else 8*(1 - 2**(nbit - 1))
+    # Wmin = -8 if type_syn==1 else -8*(1 - 2**(nbit - 1))
+    # del_w = 0.0002 * (2**(nbit - 4))
+
+    Wmax = 8 
+    Wmin = -8 
+    del_w = 0.05
+
+#     print("\n" + "new")
     
     if (C_theta < last_conc < C_theta + del_c) and (weight_prev < Wmax):
         Wnew = weight_prev + del_w if binomial(1, p_plus) == 1 else weight_prev
@@ -178,7 +200,7 @@ def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res,
     I_total = np.zeros((N_read,M))
     V_neurons = vrest*np.ones((N_read,M)) # potential of each neuron at every time instant
     Spikes = np.zeros((N_read,M))         # 1 if ith neuron spikes at jth time step
-    Calcium_conc = np.zeros((N_read,M))
+    Calcium_conc = np.ones((N_read,M)) * C_theta
     I_teach = np.zeros((N_read,))
 
     Weights_readOut = Weights_readOut_in
@@ -209,19 +231,22 @@ def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res,
         for i in range(N_read):
             if Spike[i] == 1:
                 index_prev_spike[i] = t
-        
+                
+        I_syn_additional = np.zeros((N_read,M))
         for i in range(N):
             if spikes_res[i,t] == 1:
-                I_syn_additional = np.zeros((N_read,M))
+#                 print("\n Spike from:", (i,t))
+                
                 neuron_tp = synapses_res[i]["Neuron_type"]
                 for j in range(N_read):
                     updates = syn_res(syn_string,neuron_tp,t,time,i,j,np.float64(Weights_readOut[j,i]),Delay,h,M)
-                    I_syn_additional[j,:] = updates
+                    I_syn_additional[j,:] += updates
                     if training:
                         W_new = Weight_learner(Calcium_conc[j,t-1], Weights_readOut[j,i], C_theta,  del_c, nbit, neuron_tp)
                         Weights_readOut[j,i] = W_new
 
-                I_syn = I_syn + I_syn_additional
+        I_syn = I_syn + I_syn_additional
+#         print(Weights_readOut[train_ids])
 
     return V_neurons, Spikes, Weights_readOut
 
@@ -229,15 +254,14 @@ def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res,
 ##############################
 def classifier(Spikes_readout,synapes_read):
     No_of_spikes = np.sum(Spikes_readout,1)
-#     print(No_of_spikes)
     class_out = np.argmax(No_of_spikes)
-    return synapes_read[class_out], class_out
+    return synapes_read[class_out], class_out, No_of_spikes
 
 
 ####################
 def plot_spikes(Spike_train,N,M):
-    # plt.figure(figsize=(6,6))
     plt.plot(0, 0)
+
     for i in range(N):
         for j in range(M):
             if(Spike_train[i,j] == 1):
@@ -250,7 +274,6 @@ def plot_spikes(Spike_train,N,M):
     plt.title("Spikes")  
     plt.xlabel("Time index")
     plt.ylabel("Neuron ID")
-    
     plt.show()
 
 
@@ -279,7 +302,7 @@ def class_of_sample(label):
 
 
 ###########################3
-def Input_current_gen(file_name_List, syn_string, N, time_params, training=False, train_Labels=None, seedvalue=4):
+def Input_current_gen(file_name_List, syn_string, N, time_params, Input_CXNs, sign_win_matrix, training=False, train_Labels=None, seedvalue=4):
     input_num = 0
     h, Delay = time_params.values()
     for idx in range(len(file_name_List)):
@@ -295,21 +318,20 @@ def Input_current_gen(file_name_List, syn_string, N, time_params, training=False
 
         connection_in_res = np.zeros((L,Fin),dtype=np.int64) # stores the id of reservoir neurons
 
-        reservoir_ID = [i for i in range(N)]
-        seed(seedvalue)
-        np.random.seed(seedvalue)
+#         reservoir_ID = [i for i in range(N)]
+        
         for i in range(L):
-            shuffle(reservoir_ID)
             for j in range(Fin):
-                sign_W_in = (binomial(1,1/2) - 0.5)*2
-                W_in_res[i,reservoir_ID[j]] = sign_W_in*W_in
-                connection_in_res[i,j] = reservoir_ID[j]
-
+                sign_W_in = sign_win_matrix[i, j]
+                W_in_res[i,Input_CXNs[i,j]] = sign_W_in*W_in
+                connection_in_res[i,j] = Input_CXNs[i,j]
+#         print("\n" , connection_in_res)
 
         ## Current input to the reservoir from the input neurons
         In_neurons = input   # spike train of L input neurons, over M timesteps, 1 if spike, 0 if no spike
         # print(In_neurons)
         In_app = np.zeros((N,M),dtype=np.float64)    # input current to the reservoir.
+#         plot_spikes(input, L, M)
 
         time = np.array([j*h for j in range(M)],dtype=np.float64)
 
