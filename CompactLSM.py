@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import math
 from numpy.core.overrides import verify_matching_signatures
 # import tensorflow as tf
 import numpy as np
@@ -315,7 +316,24 @@ def Input_current_gen(file_name_List, syn_string, N, time_params, Input_CXNs, si
         data = pd.read_csv(file_name_List[idx], sep=",", header=None)
         data_as_numpy = data.to_numpy()
         input = data_as_numpy.transpose()   # Single Sample input
-        (L,M) = input.shape
+        # (L,M) = input.shape
+
+        (L,M1) = input.shape
+
+        T = 500
+        ## Input scaling to T = 1000ms, h = 1ms 
+        M = math.ceil(T/h)
+
+        h1 = T/M1
+        input_temp = np.zeros((L,M))
+
+        ind = (np.where(input == 1))
+        t1 = np.array(ind[0])
+        t2 = np.array(np.array(ind[1])*h1/h,dtype=np.int)
+
+        input_temp[t1,t2] = 1
+
+        input = input_temp
 
         ## Connection from input neurons to reservoir
         W_in_res = np.zeros((L,N)) # (i,j) entry is the weight of synapse from ith input to jth neuron in reservoir 
