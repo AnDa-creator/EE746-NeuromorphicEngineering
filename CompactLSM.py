@@ -22,6 +22,8 @@ def LIF(V_neuron_prev,I_input_prev,I_input_next,N,h,index_next,index_prev_spike,
     C, g_L, E_L, V_T, R_p = params.values()
     R_p_ind = np.math.ceil(R_p/h)
     
+    vmax, vmin = 32, -32
+    
     V_neuron_next = E_L*np.ones((N,), dtype=np.float64)
     Spike_next = np.zeros((N,), dtype=np.int64)
     
@@ -34,6 +36,10 @@ def LIF(V_neuron_prev,I_input_prev,I_input_next,N,h,index_next,index_prev_spike,
     for i in range(N):
         if index_next-index_prev_spike[i] < R_p_ind:
             V_neuron_next[i] = E_L
+#         elif V_temp[i] > vmax:
+#             V_neuron_next[i] = vmax
+        elif V_temp[i] < vmin:
+            V_neuron_next[i] = vmin
         elif V_temp[i] < V_T:
             V_neuron_next[i] = V_temp[i] 
         else:
@@ -178,12 +184,12 @@ def Weight_learner(last_conc, weight_prev,
 def teacher_current(neuron_ids, desired_neuron_ids, N_read, Calcium_conc, params_conc):
     C_theta, del_c, tau_c, nbits, delta_c = params_conc.values()
     I_teach = np.zeros((N_read,))
-    I_infi = 10000
+    I_infi = 20 * 10**(-3 + 12)
     for a_neuron_id in neuron_ids:
         if a_neuron_id in desired_neuron_ids:
             I_teach[a_neuron_id] = I_infi * np.heaviside(C_theta +  delta_c - Calcium_conc[a_neuron_id], 0)
         else:
-            I_teach[a_neuron_id] = - I_infi * np.heaviside(Calcium_conc[a_neuron_id] - (C_theta -  delta_c), 0)
+            I_teach[a_neuron_id] = - 0.75 * I_infi * np.heaviside(Calcium_conc[a_neuron_id] - (C_theta -  delta_c), 0)
     
     return I_teach
 
