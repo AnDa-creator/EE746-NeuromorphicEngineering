@@ -45,7 +45,7 @@ def LIF(V_neuron_prev,I_input_prev,I_input_next,N,h,index_next,index_prev_spike,
             V_neuron_next[i] = V_temp[i] 
         else:
             Spike_next[i]  = np.int64(1)
-            V_neuron_next[i] = V_temp[i]
+            V_neuron_next[i] = V_temp[i] if V_temp[i] < vmax else vmax
     
     return V_neuron_next, Spike_next
 
@@ -135,7 +135,7 @@ def reservoir_solver(N, Delay, synapes, M, h, I_app, params_potential, Weights, 
 
                 for j in range(len(neurons)): # iteration over the synapic connection from i to neurons[j]
                     updates = syn_res(syn_string,neuron_tp,t,time,i,neurons[j],np.float64(Weights[i,j]),Delay,h,M)
-                    I_syn_additional[neurons[j],:] = updates
+                    I_syn_additional[neurons[j],:] += updates
       
         I_syn = I_syn + I_syn_additional
     
@@ -145,12 +145,20 @@ def reservoir_solver(N, Delay, synapes, M, h, I_app, params_potential, Weights, 
 ########################
 def conc_update(prev_conc, Spike, tau_c, h):
 #     print("\n", prev_conc)
-    return prev_conc*(1 - h/tau_c) + Spike * h
+    cmax,cmin = 16, 0
+    new_conc = prev_conc*(1 - h/tau_c) + Spike * h
+    for i in range(len(new_conc)):
+        if new_conc[i] > cmax:
+            new_conc[i] = cmax
+        elif new_conc[i] < cmin:
+            new_conc[i] = cmin
+    
+    return new_conc
 
 
 #########################
 def Weight_learner(last_conc, weight_prev,
-                   C_theta=10,  del_c=2, nbit=3, type_syn = None):
+                   C_theta=5,  del_c=3, nbit=8, type_syn = None):
     """
         Set type_syn as 1 for E --> E/I and 0 for I --> E/I, basically fanout from I or E.
     """
@@ -160,13 +168,13 @@ def Weight_learner(last_conc, weight_prev,
     
     # if type_syn not in (1, 0): raise ValueError("Invalid type")
     
-    # Wmax = 8 if type_syn==0 else 8*(1 - 2**(nbit - 1))
-    # Wmin = -8 if type_syn==1 else -8*(1 - 2**(nbit - 1))
-    # del_w = 0.0002 * (2**(nbit - 4))
-
+#     Wmax = 8 if type_syn==0 else 8*(1 - 2**(nbit - 1))
+#     Wmin = -8 if type_syn==1 else -8*(1 - 2**(nbit - 1))
+#     del_w = 0.0002 * (2**(nbit - 4))
+#     print(del_w)
     Wmax = 8 
     Wmin = -8 
-    del_w = 0.05
+    del_w = 0.02
 
 #     print("\n" + "new")
     
@@ -185,7 +193,7 @@ def Weight_learner(last_conc, weight_prev,
 def teacher_current(neuron_ids, desired_neuron_ids, N_read, Calcium_conc, params_conc):
     C_theta, del_c, tau_c, nbits, delta_c = params_conc.values()
     I_teach = np.zeros((N_read,))
-    I_infi = 20 * 10**(-3 + 12)
+    I_infi = 20000
     for a_neuron_id in neuron_ids:
         if a_neuron_id in desired_neuron_ids:
             I_teach[a_neuron_id] = I_infi * np.heaviside(C_theta +  delta_c - Calcium_conc[a_neuron_id], 0)
@@ -229,7 +237,7 @@ def readOut_response(N_read,N, Delay, synapses_res, M, h, spikes_res,
         
         conc = conc_update(Calcium_conc[:,t-1], Spike, tau_c, h)
         Calcium_conc[:,t] = conc
-        
+#         print(conc)
         if training:
             neuron_ids = [i for i in range(N_read)]
             desired_neuron_ids = train_ids
@@ -320,7 +328,7 @@ def Input_current_gen(file_name_List, syn_string, N, time_params, Input_CXNs, si
 
         (L,M1) = input.shape
 
-        T = 500
+        T = 250
         ## Input scaling to T = 1000ms, h = 1ms 
         M = math.ceil(T/h)
 
@@ -358,7 +366,7 @@ def Input_current_gen(file_name_List, syn_string, N, time_params, Input_CXNs, si
 #         plot_spikes(input, L, M)
 
         time = np.array([j*h for j in range(M)],dtype=np.float64)
-
+#         print(M)
         for t in range(M):
             for i in range(L):
                 if int(In_neurons[i,t]) == 1:
@@ -372,4 +380,4 @@ def Input_current_gen(file_name_List, syn_string, N, time_params, Input_CXNs, si
                         
         train_Label = class_of_sample(train_Labels[idx]) if training else "Null"
         input_num += 1
-        yield In_app, L, M, train_Label, input_num
+        yield In_app, L, M, train_Label, input_num, In_neurons
