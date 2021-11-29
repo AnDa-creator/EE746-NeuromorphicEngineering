@@ -49,30 +49,12 @@ def LIF(V_neuron_prev,I_input_prev,I_input_next,N,h,index_next,index_prev_spike,
     
     return V_neuron_next, Spike_next
 
-# def LIF(V_neuron_prev,I_input_prev,I_input_next,N,h,index_next,index_prev_spike, params):
-#     C, g_L, E_L, V_T, R_p = params.values()
-#     R_p_ind = np.math.ceil(R_p/h)
-    
-#     V_neuron_next = E_L*np.ones((N,), dtype=np.float64)
-#     Spike_next = np.zeros((N,), dtype=np.int64)
-#     V_temp = V_neuron_prev - V_neuron_prev*g_L + I_input_next + I_input_prev
-#     for i in range(N):
-#             if index_next-index_prev_spike[i] < R_p_ind:
-#                 V_neuron_next[i] = E_L
-#             elif V_temp[i] < V_T:
-#                 V_neuron_next[i] = V_temp[i] 
-#             else:
-#                 Spike_next[i]  = np.int64(1)
-#                 V_neuron_next[i] = V_temp[i]
-    
-#     return V_neuron_next, Spike_next    
-
 ##########################
 def syn_res(syn_string,type_syn,t,time,i,j,w_ij,del_i,h,M):  
     # spike in neuron i, produces a synaptic current in neuron j, weight = w_ij
 
     syn_curr = np.zeros((M),dtype=np.float64)
-    # ts_ds = np.float64(time[t]) + del_i
+
     ind = np.int64(del_i/h) + t
     if ind > len(time) - 1:
 #         print(ind)
@@ -174,7 +156,7 @@ def Weight_learner(last_conc, weight_prev,
 #     print(del_w)
     Wmax = 8 
     Wmin = -8 
-    del_w = 0.02
+    del_w = 0.005
 
 #     print("\n" + "new")
     
@@ -274,19 +256,20 @@ def classifier(Spikes_readout,synapes_read):
 
 
 ####################
-def plot_spikes(Spike_train,N,M):
-    plt.plot(0, 0)
+def plot_spikes(Spike_train,Title):
+    plt.plot(0,0)
+    N,M = Spike_train.shape
 
     for i in range(N):
         for j in range(M):
             if(Spike_train[i,j] == 1):
                 x1 = [i-0.25 , i+0.25]
                 x2 = [j,j]
-                plt.plot(x2,x1,color = 'black')
+                plt.plot(x2,x1,color = 'blue')
 
     plt.xlim([0, M])
     plt.ylim([0, N])
-    plt.title("Spikes")  
+    plt.title(Title)  
     plt.xlabel("Time index")
     plt.ylabel("Neuron ID")
     plt.show()
@@ -328,8 +311,8 @@ def Input_current_gen(file_name_List, syn_string, N, time_params, Input_CXNs, si
 
         (L,M1) = input.shape
 
-        T = 250
-        ## Input scaling to T = 1000ms, h = 1ms 
+        T = 500
+        ## Input scaling to T = 500ms, h = 1ms 
         M = math.ceil(T/h)
 
         h1 = T/M1
